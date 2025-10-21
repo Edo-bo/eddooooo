@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isi Struk Otomatis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inconsolata:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .receipt-text {
+            font-family: 'Inconsolata', monospace; /* Font yang mirip mesin tik/kasir */
+            font-size: 16px;
+            color: #1a202c;
+            position: absolute;
+            background-color: transparent; /* Pastikan tidak ada background */
+        }
+        /* Sembunyikan form saat mencetak */
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body, .container {
+                margin: 0;
+                padding: 0;
+            }
+            #receipt-preview {
+                margin: 0 auto;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+                transform: scale(1.1); /* Sedikit perbesar agar pas di kertas */
+                transform-origin: top center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 lg:p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- Kolom Input Form -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg no-print">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">Isi Data Struk</h2>
+                
+                <!-- Info Pelanggan -->
+                <div class="mb-6">
+                    <label for="customer-info" class="block text-sm font-medium text-gray-700 mb-1">Info Pelanggan</label>
+                    <textarea id="customer-info" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Kepada Yth. Bapak Budi&#10;Jl. Merdeka No. 17"></textarea>
+                </div>
+
+                <!-- Form Tambah Item -->
+                <div class="space-y-4 p-4 border rounded-lg bg-gray-50 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-700">Tambah Item</h3>
+                    <div class="grid grid-cols-12 gap-3">
+                        <div class="col-span-2">
+                            <label for="item-qty" class="block text-sm font-medium">Qty</label>
+                            <input type="number" id="item-qty" class="mt-1 w-full p-2 border-gray-300 rounded-md" value="1">
+                        </div>
+                        <div class="col-span-6">
+                            <label for="item-keterangan" class="block text-sm font-medium">Keterangan</label>
+                            <input type="text" id="item-keterangan" class="mt-1 w-full p-2 border-gray-300 rounded-md" placeholder="Nama barang">
+                        </div>
+                        <div class="col-span-4">
+                            <label for="item-harga" class="block text-sm font-medium">Harga</label>
+                            <input type="number" id="item-harga" class="mt-1 w-full p-2 border-gray-300 rounded-md" placeholder="10000">
+                        </div>
+                    </div>
+                     <button id="add-item-btn" class="w-full mt-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition">
+                        + Tambah Item
+                    </button>
+                </div>
+                
+                <!-- Promo & Aksi -->
+                <div class="mb-6">
+                    <label for="promo" class="block text-sm font-medium text-gray-700">Promo (Rp)</label>
+                    <input type="number" id="promo" value="0" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button id="print-btn" class="flex-1 bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition">
+                        Cetak / Unduh PDF
+                    </button>
+                    <button id="reset-btn" class="flex-1 bg-red-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-red-600 transition">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Kolom Pratinjau Struk -->
+            <div id="receipt-preview-container" class="flex items-center justify-center p-4">
+                <div id="receipt-preview" class="relative w-[450px] h-[636px] bg-gray-200">
+                    <!-- GANTI "1000307693.png" DENGAN NAMA FILE GAMBAR ANDA JIKA BERBEDA -->
+                    <img src="1000307693.png" alt="Template Struk" class="absolute inset-0 w-full h-full object-contain">
+                    
+                    <!-- Area untuk menempatkan teks secara dinamis -->
+                    <div id="customer-info-overlay" class="receipt-text whitespace-pre-wrap" style="top: 158px; left: 45px; width: 370px; height: 60px;"></div>
+                    <div id="items-overlay" class="absolute" style="top: 257px; left: 40px; width: 380px;">
+                        <!-- Item-item akan ditambahkan di sini oleh JavaScript -->
+                    </div>
+                    <div id="subtotal-overlay" class="receipt-text text-right" style="top: 524px; left: 245px; width: 160px;"></div>
+                    <div id="promo-overlay" class="receipt-text text-right" style="top: 555px; left: 245px; width: 160px;"></div>
+                    <div id="total-overlay" class="receipt-text text-right font-bold text-lg" style="top: 585px; left: 245px; width: 160px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const customerInfoInput = document.getElementById('customer-info');
+        const itemQtyInput = document.getElementById('item-qty');
+        const itemKeteranganInput = document.getElementById('item-keterangan');
+        const itemHargaInput = document.getElementById('item-harga');
+        const promoInput = document.getElementById('promo');
+        const addItemBtn = document.getElementById('add-item-btn');
+        const printBtn = document.getElementById('print-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        const customerInfoOverlay = document.getElementById('customer-info-overlay');
+        const itemsOverlay = document.getElementById('items-overlay');
+        const subtotalOverlay = document.getElementById('subtotal-overlay');
+        const promoOverlay = document.getElementById('promo-overlay');
+        const totalOverlay = document.getElementById('total-overlay');
+
+        let items = [];
+
+        const formatRupiah = (number) => `Rp ${new Intl.NumberFormat('id-ID').format(number)}`;
+
+        function renderReceipt() {
+            // Render info pelanggan
+            customerInfoOverlay.textContent = customerInfoInput.value;
+
+            // Render item
+            itemsOverlay.innerHTML = '';
+            let subtotal = 0;
+            const rowHeight = 35.5; // Sesuaikan tinggi baris jika perlu
+
+            items.forEach((item, index) => {
+                const itemTop = index * rowHeight;
+                const jumlah = item.qty * item.harga;
+                subtotal += jumlah;
+
+                const qtyDiv = document.createElement('div');
+                qtyDiv.className = 'receipt-text text-center';
+                qtyDiv.style.top = `${itemTop}px`;
+                qtyDiv.style.left = '5px';
+                qtyDiv.style.width = '55px';
+                qtyDiv.textContent = item.qty;
+
+                const ketDiv = document.createElement('div');
+                ketDiv.className = 'receipt-text';
+                ketDiv.style.top = `${itemTop}px`;
+                ketDiv.style.left = '70px';
+                ketDiv.style.width = '130px';
+                ketDiv.textContent = item.keterangan;
+
+                const hargaDiv = document.createElement('div');
+                hargaDiv.className = 'receipt-text text-right';
+                hargaDiv.style.top = `${itemTop}px`;
+                hargaDiv.style.left = '205px';
+                hargaDiv.style.width = '90px';
+                hargaDiv.textContent = formatRupiah(item.harga);
+
+                const jumlahDiv = document.createElement('div');
+                jumlahDiv.className = 'receipt-text text-right';
+                jumlahDiv.style.top = `${itemTop}px`;
+                jumlahDiv.style.left = '300px';
+                jumlahDiv.style.width = '90px';
+                jumlahDiv.textContent = formatRupiah(jumlah);
+
+                itemsOverlay.appendChild(qtyDiv);
+                itemsOverlay.appendChild(ketDiv);
+                itemsOverlay.appendChild(hargaDiv);
+                itemsOverlay.appendChild(jumlahDiv);
+            });
+
+            // Render total
+            const promo = parseInt(promoInput.value, 10) || 0;
+            const total = subtotal - promo;
+            
+            subtotalOverlay.textContent = formatRupiah(subtotal);
+            promoOverlay.textContent = formatRupiah(promo);
+            totalOverlay.textContent = formatRupiah(total);
+        }
+
+        addItemBtn.addEventListener('click', () => {
+            const qty = parseInt(itemQtyInput.value);
+            const keterangan = itemKeteranganInput.value;
+            const harga = parseInt(itemHargaInput.value);
+
+            if (keterangan && qty > 0 && harga >= 0 && items.length < 7) { // Batasi 7 item sesuai template
+                items.push({ qty, keterangan, harga });
+                renderReceipt();
+
+                // Reset input
+                itemKeteranganInput.value = '';
+                itemHargaInput.value = '';
+                itemQtyInput.value = 1;
+                itemKeteranganInput.focus();
+            } else if (items.length >= 7) {
+                alert('Jumlah item sudah maksimal sesuai template.');
+            } else {
+                alert('Harap isi semua kolom item dengan benar.');
+            }
+        });
+        
+        customerInfoInput.addEventListener('input', renderReceipt);
+        promoInput.addEventListener('input', renderReceipt);
+
+        printBtn.addEventListener('click', () => window.print());
+        
+        resetBtn.addEventListener('click', () => {
+            if(confirm('Anda yakin ingin mereset semua isian?')) {
+                items = [];
+                customerInfoInput.value = '';
+                promoInput.value = '0';
+                itemKeteranganInput.value = '';
+                itemHargaInput.value = '';
+                itemQtyInput.value = 1;
+                renderReceipt();
+            }
+        });
+
+        // Initial render
+        renderReceipt();
+    </script>
+</body>
+</html>
